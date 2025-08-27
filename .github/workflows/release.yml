@@ -16,7 +16,7 @@ jobs:
           MOD_NAME="factorioinstantmining-release"
           zip -r ${MOD_NAME}.zip . -x ".git/*" ".github/*"
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: factorioinstantmining-release
           path: factorioinstantmining-release.zip
