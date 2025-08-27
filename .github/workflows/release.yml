@@ -2,11 +2,11 @@ name: Create GitHub Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main   # adjust if your default branch is different
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,36 +19,33 @@ jobs:
           echo "MOD_NAME=$MOD_NAME" >> $GITHUB_ENV
           echo "MOD_VERSION=$MOD_VERSION" >> $GITHUB_ENV
 
+      - name: Create git tag
+        run: |
+          TAG="v${{ env.MOD_VERSION }}"
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$TAG"
+          git push origin "$TAG"
+
       - name: Create release directory
-        run: mkdir -p ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}
+        run: mkdir -p "${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}"
 
       - name: Copy mod files
         run: |
-          cp data.lua info.json changelog.txt thumbnail.png ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}/
-          cp -r locale ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}/
+          cp data.lua info.json changelog.txt thumbnail.png "${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}/"
+          cp -r locale "${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}/"
 
       - name: Zip Release
         run: |
-          zip -r ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}.zip ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}
+          zip -r "${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}.zip" "${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}"
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: "Release ${{ env.TAG }}"
+          files: |
+            ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-
-      - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}.zip
-          asset_name: ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}.zip
-          asset_content_type: application/zip
