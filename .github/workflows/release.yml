@@ -3,7 +3,7 @@ name: Release Factorio Mod
 on:
   push:
     branches: [ main, master ]
-    paths: 
+    paths:
       - 'info.json'  # Only trigger when info.json changes
   workflow_dispatch:  # Allow manual triggering
 
@@ -24,9 +24,17 @@ jobs:
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "Version found: $VERSION"
     
+    - name: Get mod name from info.json
+      id: get_mod_name
+      run: |
+        MOD_NAME=$(jq -r '.name' info.json)
+        echo "mod_name=$MOD_NAME" >> $GITHUB_OUTPUT
+        echo "Mod name: $MOD_NAME"
+    
     - name: Check if tag already exists
       id: check_tag
       run: |
+        git fetch --tags
         if git rev-parse "v${{ steps.get_version.outputs.version }}" >/dev/null 2>&1; then
           echo "exists=true" >> $GITHUB_OUTPUT
           echo "Tag v${{ steps.get_version.outputs.version }} already exists"
@@ -35,13 +43,6 @@ jobs:
           echo "Tag v${{ steps.get_version.outputs.version }} does not exist"
         fi
     
-    - name: Get mod name from info.json
-      id: get_mod_name
-      run: |
-        MOD_NAME=$(jq -r '.name' info.json)
-        echo "mod_name=$MOD_NAME" >> $GITHUB_OUTPUT
-        echo "Mod name: $MOD_NAME"
-    
     - name: Create Factorio Direct Install Package
       if: steps.check_tag.outputs.exists == 'false'
       run: |
@@ -49,10 +50,8 @@ jobs:
         VERSION="${{ steps.get_version.outputs.version }}"
         FACTORIO_PACKAGE_NAME="${MOD_NAME}_${VERSION}"
         
-        # Create a temporary directory for the Factorio direct install
         mkdir -p "temp/factorio/$FACTORIO_PACKAGE_NAME"
         
-        # Copy all files except excluded ones for Factorio direct install
         rsync -av --progress . "temp/factorio/$FACTORIO_PACKAGE_NAME/" \
           --exclude='.git/' \
           --exclude='.github/' \
@@ -79,7 +78,6 @@ jobs:
           --exclude='*.pyc' \
           --exclude='*.log'
         
-        # Create the Factorio direct install zip file
         cd temp/factorio
         zip -r "../../${FACTORIO_PACKAGE_NAME}.zip" "$FACTORIO_PACKAGE_NAME/"
         cd ../..
@@ -94,10 +92,8 @@ jobs:
         VERSION="${{ steps.get_version.outputs.version }}"
         PORTAL_PACKAGE_NAME="${MOD_NAME}_${VERSION}_mod-portal"
         
-        # Create a temporary directory for the mod portal package
         mkdir -p "temp/portal"
         
-        # Copy all files directly to the portal temp directory (no subfolder for mod portal)
         rsync -av --progress . "temp/portal/" \
           --exclude='.git/' \
           --exclude='.github/' \
@@ -124,7 +120,6 @@ jobs:
           --exclude='*.pyc' \
           --exclude='*.log'
         
-        # Create the mod portal zip file (files in root of zip, not in a subfolder)
         cd temp/portal
         zip -r "../../${PORTAL_PACKAGE_NAME}.zip" .
         cd ../..
@@ -134,8 +129,7 @@ jobs:
     
     - name: Clean up temp directories
       if: steps.check_tag.outputs.exists == 'false'
-      run: |
-        rm -rf temp
+      run: rm -rf temp
     
     - name: Create Release
       if: steps.check_tag.outputs.exists == 'false'
@@ -145,9 +139,9 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: v${{ steps.get_version.outputs.version }}
-        release_name: "Instant Mining v${{ steps.get_version.outputs.version }}"
+        release_name: "${{ steps.get_mod_name.outputs.mod_name }} v${{ steps.get_version.outputs.version }}"
         body: |
-          ## Instant Mining v${{ steps.get_version.outputs.version }}
+          ## ${{ steps.get_mod_name.outputs.mod_name }} v${{ steps.get_version.outputs.version }}
           
           Factorio mod release for version ${{ steps.get_version.outputs.version }}.
           
