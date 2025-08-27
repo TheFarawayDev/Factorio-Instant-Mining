@@ -27,10 +27,12 @@ jobs:
 
       - name: Prepare mod zip structure
         run: |
-          mkdir -p "${{ steps.modinfo.outputs.mod_folder }}"
+          mkdir -p build
           shopt -s extglob
-          cp -r !(.*|.git|.github) "${{ steps.modinfo.outputs.mod_folder }}/"
+          cp -r !(build|.git|.github|.*) "build/${{ steps.modinfo.outputs.mod_folder }}/"
+          cd build
           zip -r "${{ steps.modinfo.outputs.mod_folder }}.zip" "${{ steps.modinfo.outputs.mod_folder }}"
+          mv "${{ steps.modinfo.outputs.mod_folder }}.zip" ../
 
       - name: Upload zip as artifact (optional)
         uses: actions/upload-artifact@v4
