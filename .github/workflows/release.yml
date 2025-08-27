@@ -1,50 +1,39 @@
-name: Package and Release Factorio Mod
+name: Create Release Zip
 
 on:
   push:
     branches:
       - main
       - master
-    tags:
-      - 'v*'  # Optional: trigger on version tags too
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Read mod name and version from info.json
-        id: modinfo
+        id: mod_info
         run: |
           MOD_NAME=$(jq -r .name info.json)
           MOD_VERSION=$(jq -r .version info.json)
-          MOD_FOLDER="${MOD_NAME}_${MOD_VERSION}"
-          echo "mod_name=$MOD_NAME" >> $GITHUB_OUTPUT
-          echo "mod_version=$MOD_VERSION" >> $GITHUB_OUTPUT
-          echo "mod_folder=$MOD_FOLDER" >> $GITHUB_OUTPUT
+          echo "MOD_NAME=$MOD_NAME" >> $GITHUB_ENV
+          echo "MOD_VERSION=$MOD_VERSION" >> $GITHUB_ENV
 
-      - name: Prepare mod zip structure
+      - name: Create release directory
+        run: mkdir -p ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}
+
+      - name: Copy mod files
         run: |
-          mkdir -p build
-          shopt -s extglob
-          cp -r !(build|.git|.github|.*) "build/${{ steps.modinfo.outputs.mod_folder }}/"
-          cd build
-          zip -r "${{ steps.modinfo.outputs.mod_folder }}.zip" "${{ steps.modinfo.outputs.mod_folder }}"
-          mv "${{ steps.modinfo.outputs.mod_folder }}.zip" ../
+          cp data.lua info.json LICENSE changelog.txt thumbnail.png ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}/
+          cp -r locale ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}/
 
-      - name: Upload zip as artifact (optional)
+      - name: Zip Release
+        run: |
+          zip -r ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}.zip ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.modinfo.outputs.mod_folder }}
-          path: ${{ steps.modinfo.outputs.mod_folder }}.zip
-
-      - name: Create GitHub Release and upload zip
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Release ${{ steps.modinfo.outputs.mod_version }}
-          tag_name: v${{ steps.modinfo.outputs.mod_version }}
-          files: ${{ steps.modinfo.outputs.mod_folder }}.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}
+          path: ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}.zip
