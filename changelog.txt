@@ -5,7 +5,7 @@ Date: 27. 08. 2025
     - Changed the mod to affect the player's mining and deconstruction speed instead of the mining drills.
 
 ---------------------------------------------------------------------------------------------------
-Version: 0.1.0
+Version: 0.1.1
 Date: 27. 08. 2025
   Features:
     - Initial release.
