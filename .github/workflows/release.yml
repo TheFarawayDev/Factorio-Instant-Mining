@@ -1,51 +1,199 @@
-name: Create GitHub Release
+name: Release Factorio Mod
 
 on:
   push:
-    branches:
-      - main   # adjust if your default branch is different
+    branches: [ main, master ]
+    paths: 
+      - 'info.json'  # Only trigger when info.json changes
+  workflow_dispatch:  # Allow manual triggering
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Read mod name and version from info.json
-        id: mod_info
-        run: |
-          MOD_NAME=$(jq -r .name info.json)
-          MOD_VERSION=$(jq -r .version info.json)
-          echo "MOD_NAME=$MOD_NAME" >> $GITHUB_ENV
-          echo "MOD_VERSION=$MOD_VERSION" >> $GITHUB_ENV
-
-      - name: Create git tag
-        run: |
-          TAG="v${{ env.MOD_VERSION }}"
-          echo "TAG=$TAG" >> $GITHUB_ENV
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag "$TAG"
-          git push origin "$TAG"
-
-      - name: Create release directory
-        run: mkdir -p "${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}"
-
-      - name: Copy mod files
-        run: |
-          cp data.lua info.json changelog.txt thumbnail.png "${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}/"
-          cp -r locale "${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}/"
-
-      - name: Zip Release
-        run: |
-          zip -r "${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}.zip" "${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}"
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ env.TAG }}
-          name: "Release ${{ env.TAG }}"
-          files: |
-            ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for proper tagging
+    
+    - name: Read version from info.json
+      id: get_version
+      run: |
+        VERSION=$(jq -r '.version' info.json)
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version found: $VERSION"
+    
+    - name: Check if tag already exists
+      id: check_tag
+      run: |
+        if git rev-parse "v${{ steps.get_version.outputs.version }}" >/dev/null 2>&1; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+          echo "Tag v${{ steps.get_version.outputs.version }} already exists"
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "Tag v${{ steps.get_version.outputs.version }} does not exist"
+        fi
+    
+    - name: Get mod name from info.json
+      id: get_mod_name
+      run: |
+        MOD_NAME=$(jq -r '.name' info.json)
+        echo "mod_name=$MOD_NAME" >> $GITHUB_OUTPUT
+        echo "Mod name: $MOD_NAME"
+    
+    - name: Create Factorio Direct Install Package
+      if: steps.check_tag.outputs.exists == 'false'
+      run: |
+        MOD_NAME="${{ steps.get_mod_name.outputs.mod_name }}"
+        VERSION="${{ steps.get_version.outputs.version }}"
+        FACTORIO_PACKAGE_NAME="${MOD_NAME}_${VERSION}"
+        
+        # Create a temporary directory for the Factorio direct install
+        mkdir -p "temp/factorio/$FACTORIO_PACKAGE_NAME"
+        
+        # Copy all files except excluded ones for Factorio direct install
+        rsync -av --progress . "temp/factorio/$FACTORIO_PACKAGE_NAME/" \
+          --exclude='.git/' \
+          --exclude='.github/' \
+          --exclude='.vscode/' \
+          --exclude='.idea/' \
+          --exclude='*.code-workspace' \
+          --exclude='node_modules/' \
+          --exclude='.gitignore' \
+          --exclude='.gitattributes' \
+          --exclude='README.md' \
+          --exclude='LICENSE' \
+          --exclude='*.md' \
+          --exclude='.env' \
+          --exclude='.env.*' \
+          --exclude='Thumbs.db' \
+          --exclude='.DS_Store' \
+          --exclude='*.tmp' \
+          --exclude='*.temp' \
+          --exclude='temp/' \
+          --exclude='build/' \
+          --exclude='dist/' \
+          --exclude='.pytest_cache/' \
+          --exclude='__pycache__/' \
+          --exclude='*.pyc' \
+          --exclude='*.log'
+        
+        # Create the Factorio direct install zip file
+        cd temp/factorio
+        zip -r "../../${FACTORIO_PACKAGE_NAME}.zip" "$FACTORIO_PACKAGE_NAME/"
+        cd ../..
+        
+        echo "Created Factorio package: ${FACTORIO_PACKAGE_NAME}.zip"
+        ls -la "${FACTORIO_PACKAGE_NAME}.zip"
+    
+    - name: Create Mod Portal Package
+      if: steps.check_tag.outputs.exists == 'false'
+      run: |
+        MOD_NAME="${{ steps.get_mod_name.outputs.mod_name }}"
+        VERSION="${{ steps.get_version.outputs.version }}"
+        PORTAL_PACKAGE_NAME="${MOD_NAME}_${VERSION}_mod-portal"
+        
+        # Create a temporary directory for the mod portal package
+        mkdir -p "temp/portal"
+        
+        # Copy all files directly to the portal temp directory (no subfolder for mod portal)
+        rsync -av --progress . "temp/portal/" \
+          --exclude='.git/' \
+          --exclude='.github/' \
+          --exclude='.vscode/' \
+          --exclude='.idea/' \
+          --exclude='*.code-workspace' \
+          --exclude='node_modules/' \
+          --exclude='.gitignore' \
+          --exclude='.gitattributes' \
+          --exclude='README.md' \
+          --exclude='LICENSE' \
+          --exclude='*.md' \
+          --exclude='.env' \
+          --exclude='.env.*' \
+          --exclude='Thumbs.db' \
+          --exclude='.DS_Store' \
+          --exclude='*.tmp' \
+          --exclude='*.temp' \
+          --exclude='temp/' \
+          --exclude='build/' \
+          --exclude='dist/' \
+          --exclude='.pytest_cache/' \
+          --exclude='__pycache__/' \
+          --exclude='*.pyc' \
+          --exclude='*.log'
+        
+        # Create the mod portal zip file (files in root of zip, not in a subfolder)
+        cd temp/portal
+        zip -r "../../${PORTAL_PACKAGE_NAME}.zip" .
+        cd ../..
+        
+        echo "Created Mod Portal package: ${PORTAL_PACKAGE_NAME}.zip"
+        ls -la "${PORTAL_PACKAGE_NAME}.zip"
+    
+    - name: Clean up temp directories
+      if: steps.check_tag.outputs.exists == 'false'
+      run: |
+        rm -rf temp
+    
+    - name: Create Release
+      if: steps.check_tag.outputs.exists == 'false'
+      uses: actions/create-release@v1
+      id: create_release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.get_version.outputs.version }}
+        release_name: "Instant Mining v${{ steps.get_version.outputs.version }}"
+        body: |
+          ## Instant Mining v${{ steps.get_version.outputs.version }}
+          
+          Factorio mod release for version ${{ steps.get_version.outputs.version }}.
+          
+          ### Installation Options
+          
+          **Option 1: Direct Factorio Installation**
+          1. Download `${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}.zip`
+          2. Extract it to your Factorio mods folder (`%appdata%/Factorio/mods` on Windows)
+          3. Restart Factorio
+          
+          **Option 2: Mod Portal Upload**
+          1. Download `${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}_mod-portal.zip`
+          2. Upload this file to the [Factorio Mod Portal](https://mods.factorio.com/)
+          
+          ### Package Differences
+          - **Direct Install**: Contains mod files in a properly named folder structure
+          - **Mod Portal**: Contains mod files in root of zip (required for mod portal upload)
+          
+          ### Changes
+          See the changelog in the mod files for detailed changes in this version.
+        draft: false
+        prerelease: false
+    
+    - name: Upload Factorio Direct Install Asset
+      if: steps.check_tag.outputs.exists == 'false'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}.zip
+        asset_name: ${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}.zip
+        asset_content_type: application/zip
+    
+    - name: Upload Mod Portal Asset
+      if: steps.check_tag.outputs.exists == 'false'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}_mod-portal.zip
+        asset_name: ${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}_mod-portal.zip
+        asset_content_type: application/zip
+    
+    - name: Skip release (tag exists)
+      if: steps.check_tag.outputs.exists == 'true'
+      run: |
+        echo "Skipping release creation - tag v${{ steps.get_version.outputs.version }} already exists"
