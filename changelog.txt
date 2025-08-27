@@ -1,0 +1,17 @@
+---------------------------------------------------------------------------------------------------
+Version: 0.2.1
+Date: 27. 08. 2025
+  Changes:
+    - Added a license file.
+
+---------------------------------------------------------------------------------------------------
+Version: 0.2.0
+Date: 27. 08. 2025
+  Changes:
+    - Changed the mod to affect the player's mining and deconstruction speed instead of the mining drills.
+
+---------------------------------------------------------------------------------------------------
+Version: 0.1.0
+Date: 27. 08. 2025
+  Features:
+    - Initial release.
