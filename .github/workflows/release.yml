@@ -1,0 +1,22 @@
+name: Create Release Zip
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Zip Release
+        run: |
+          MOD_NAME="factorioinstantmining-release"
+          zip -r ${MOD_NAME}.zip . -x ".git/*" ".github/*"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: factorioinstantmining-release
+          path: factorioinstantmining-release.zip
