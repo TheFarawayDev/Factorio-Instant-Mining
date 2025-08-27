@@ -25,7 +25,7 @@ jobs:
 
       - name: Copy mod files
         run: |
-          cp data.lua info.json LICENSE changelog.txt thumbnail.png ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}/
+          cp data.lua info.json changelog.txt thumbnail.png ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}/
           cp -r locale ${{ env.MOD_NAME }}_${{ env.MOD_VERSION }}/
 
       - name: Zip Release
