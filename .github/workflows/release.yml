@@ -88,48 +88,6 @@ jobs:
         echo "Created Factorio package: ${FACTORIO_PACKAGE_NAME}.zip"
         ls -la "${FACTORIO_PACKAGE_NAME}.zip"
     
-    - name: Create Mod Portal Package
-      if: steps.check_tag.outputs.exists == 'false'
-      run: |
-        MOD_NAME="${{ steps.get_mod_name.outputs.mod_name }}"
-        VERSION="${{ steps.get_version.outputs.version }}"
-        PORTAL_PACKAGE_NAME="${MOD_NAME}_${VERSION}_mod-portal"
-        
-        mkdir -p "temp/portal"
-        
-        rsync -av --progress . "temp/portal/" \
-          --exclude='.git/' \
-          --exclude='.github/' \
-          --exclude='.vscode/' \
-          --exclude='.idea/' \
-          --exclude='*.code-workspace' \
-          --exclude='node_modules/' \
-          --exclude='.gitignore' \
-          --exclude='.gitattributes' \
-          --exclude='README.md' \
-          --exclude='LICENSE' \
-          --exclude='*.md' \
-          --exclude='.env' \
-          --exclude='.env.*' \
-          --exclude='Thumbs.db' \
-          --exclude='.DS_Store' \
-          --exclude='*.tmp' \
-          --exclude='*.temp' \
-          --exclude='temp/' \
-          --exclude='build/' \
-          --exclude='dist/' \
-          --exclude='.pytest_cache/' \
-          --exclude='__pycache__/' \
-          --exclude='*.pyc' \
-          --exclude='*.log'
-        
-        cd temp/portal
-        zip -r "../../${PORTAL_PACKAGE_NAME}.zip" .
-        cd ../..
-        
-        echo "Created Mod Portal package: ${PORTAL_PACKAGE_NAME}.zip"
-        ls -la "${PORTAL_PACKAGE_NAME}.zip"
-    
     - name: Clean up temp directories
       if: steps.check_tag.outputs.exists == 'false'
       run: rm -rf temp
