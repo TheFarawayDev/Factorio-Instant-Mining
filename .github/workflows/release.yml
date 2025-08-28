@@ -7,11 +7,12 @@ on:
       - 'info.json'  # Only trigger when info.json changes
   workflow_dispatch:  # Allow manual triggering
 
+permissions:
+  contents: write  # Required for creating releases and tags
+
 jobs:
   release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     
     steps:
     - name: Checkout repository
@@ -51,11 +52,11 @@ jobs:
         VERSION="${{ steps.get_version.outputs.version }}"
         PACKAGE_NAME="${MOD_NAME}_${VERSION}"
         
-        # Create a temporary directory for the mod package
-        mkdir -p "temp"
+        # Create a temporary directory for the mod package with proper folder structure
+        mkdir -p "temp/$PACKAGE_NAME"
         
-        # Copy all files directly to temp directory (files in root of zip)
-        rsync -av --progress . "temp/" \
+        # Copy all files to the mod folder inside temp directory
+        rsync -av --progress . "temp/$PACKAGE_NAME/" \
           --exclude='.git/' \
           --exclude='.github/' \
           --exclude='.vscode/' \
@@ -83,9 +84,9 @@ jobs:
           --exclude='.vscode/' \
           --exclude='release.yml'
         
-        # Create the zip file with mod files in root
+        # Create the zip file with mod files in a folder
         cd temp
-        zip -r "../${PACKAGE_NAME}.zip" .
+        zip -r "../${PACKAGE_NAME}.zip" "$PACKAGE_NAME/"
         cd ..
         
         # Clean up temp directory
