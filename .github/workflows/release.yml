@@ -126,7 +126,7 @@ jobs:
         draft: false
         prerelease: false
     
-    - name: Upload Factorio Direct Install Asset
+    - name: Upload Factorio Direct Install & Mod Portal
       if: steps.check_tag.outputs.exists == 'false'
       uses: actions/upload-release-asset@v1
       env:
@@ -135,17 +135,6 @@ jobs:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}.zip
         asset_name: ${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}.zip
-        asset_content_type: application/zip
-    
-    - name: Upload Mod Portal Asset
-      if: steps.check_tag.outputs.exists == 'false'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}_mod-portal.zip
-        asset_name: ${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}_mod-portal.zip
         asset_content_type: application/zip
     
     - name: Skip release (tag exists)
