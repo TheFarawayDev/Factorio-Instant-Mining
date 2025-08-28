@@ -108,19 +108,11 @@ jobs:
           
           ### Installation Options
           
-          **Option 1: Direct Factorio Installation**
+          **Factorio Installation**
           1. Download `${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}.zip`
           2. Extract it to your Factorio mods folder (`%appdata%/Factorio/mods` on Windows)
           3. Restart Factorio
-          
-          **Option 2: Mod Portal Upload**
-          1. Download `${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}_mod-portal.zip`
-          2. Upload this file to the [Factorio Mod Portal](https://mods.factorio.com/)
-          
-          ### Package Differences
-          - **Direct Install**: Contains mod files in a properly named folder structure
-          - **Mod Portal**: Contains mod files in root of zip (required for mod portal upload)
-          
+
           ### Changes
           See the changelog in the mod files for detailed changes in this version.
         draft: false
