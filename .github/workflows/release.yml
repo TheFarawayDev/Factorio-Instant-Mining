@@ -90,49 +90,39 @@ jobs:
         echo "Created package: ${PACKAGE_NAME}.zip"
         ls -la "${PACKAGE_NAME}.zip"
     
-    - name: Create Release
+    - name: Create Release with GitHub CLI
       if: steps.check_tag.outputs.exists == 'false'
-      uses: actions/create-release@v1
-      id: create_release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v${{ steps.get_version.outputs.version }}
-        release_name: "Instant Mining v${{ steps.get_version.outputs.version }}"
-        body: |
-          ## Instant Mining v${{ steps.get_version.outputs.version }}
-          
-          Factorio mod release for version ${{ steps.get_version.outputs.version }}.
-          
-          ### Installation
-          
-          **Direct Installation:**
-          1. Download the zip file below
-          2. Place the zip file directly in your Factorio mods folder (`%appdata%/Factorio/mods` on Windows, `~/.factorio/mods` on Linux)
-          3. Do NOT extract the zip file - Factorio will handle it automatically
-          4. Restart Factorio
-          
-          **Mod Portal:**
-          This same zip file can be uploaded directly to the [Factorio Mod Portal](https://mods.factorio.com/) without any modifications.
-          
-          ### Package Format
-          This package contains mod files in the root of the zip (no subfolder), which is the correct format for both direct Factorio installation and mod portal upload.
-          
-          ### Changes
-          See the changelog in the mod files for detailed changes in this version.
-        draft: false
-        prerelease: false
-    
-    - name: Upload Release Asset
-      if: steps.check_tag.outputs.exists == 'false'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}.zip
-        asset_name: ${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}.zip
-        asset_content_type: application/zip
+      run: |
+        MOD_NAME="${{ steps.get_mod_name.outputs.mod_name }}"
+        VERSION="${{ steps.get_version.outputs.version }}"
+        PACKAGE_NAME="${MOD_NAME}_${VERSION}"
+        
+        # Create release with GitHub CLI
+        gh release create "v${VERSION}" \
+          --title "Instant Mining v${VERSION}" \
+          --notes "## Instant Mining v${VERSION}
+
+        Factorio mod release for version ${VERSION}.
+
+        ### Installation
+
+        **Direct Installation:**
+        1. Download the zip file below
+        2. Place the zip file directly in your Factorio mods folder (\`%appdata%/Factorio/mods\` on Windows, \`~/.factorio/mods\` on Linux)
+        3. Do NOT extract the zip file - Factorio will handle it automatically
+        4. Restart Factorio
+
+        **Mod Portal:**
+        This same zip file can be uploaded directly to the [Factorio Mod Portal](https://mods.factorio.com/) without any modifications.
+
+        ### Package Format
+        This package contains mod files in the root of the zip (no subfolder), which is the correct format for both direct Factorio installation and mod portal upload.
+
+        ### Changes
+        See the changelog in the mod files for detailed changes in this version." \
+          "${PACKAGE_NAME}.zip"
     
     - name: Skip release (tag exists)
       if: steps.check_tag.outputs.exists == 'true'
