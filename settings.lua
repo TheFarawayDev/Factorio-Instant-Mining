@@ -7,8 +7,7 @@ data:extend(
     default_value = false,
     order = "a",
     per_user = false,
-    mod = "instant-mining-plus",
-    localization_settings_key = "instant-mining-miners-setting-name",
-    localization_settings_key_description = "instant-mining-miners-setting-description"
+    localised_name = {"[mod-setting-name].instant-mining-miners-setting-name"},
+    localised_description = {"[mod-setting-description].instant-mining-miners-setting-description"}
   }
 })
