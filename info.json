@@ -1,14 +1,12 @@
 {
-  "name": "instant-mining-plus",
-  "version": "0.3.1",
-  "title": "Instant Mining Plus",
-  "author": "thefarawaydev",
-  "homepage": "",
-  "description": "Makes mining instantaneous.",
+  "name": "instant-mining",
+  "version": "1.0.0",
+  "title": "Instant Mining",
+  "author": "Senshi_Ozu",
+  "description": "All objects can be instantly mined by hand",
   "factorio_version": "2.0",
-  "dependencies": [
-    "base"
-  ],
+  "dependencies": ["base >= 2.0", "settings"],
+
   "quality_required": false,
   "rail_bridges_required": false,
   "space_travel_required": false,
