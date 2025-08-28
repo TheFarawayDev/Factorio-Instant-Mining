@@ -42,18 +42,18 @@ jobs:
         echo "mod_name=$MOD_NAME" >> $GITHUB_OUTPUT
         echo "Mod name: $MOD_NAME"
     
-    - name: Create mod package
+    - name: Create Factorio Direct Install Package
       if: steps.check_tag.outputs.exists == 'false'
       run: |
         MOD_NAME="${{ steps.get_mod_name.outputs.mod_name }}"
         VERSION="${{ steps.get_version.outputs.version }}"
-        PACKAGE_NAME="${MOD_NAME}_${VERSION}"
+        FACTORIO_PACKAGE_NAME="${MOD_NAME}_${VERSION}"
         
-        # Create a temporary directory for the mod package
-        mkdir -p "temp"
+        # Create a temporary directory for the Factorio direct install
+        mkdir -p "temp/factorio/$FACTORIO_PACKAGE_NAME"
         
-        # Copy all files directly to temp directory (files in root of zip)
-        rsync -av --progress . "temp/" \
+        # Copy all files except excluded ones for Factorio direct install
+        rsync -av --progress . "temp/factorio/$FACTORIO_PACKAGE_NAME/" \
           --exclude='.git/' \
           --exclude='.github/' \
           --exclude='.vscode/' \
@@ -79,50 +79,119 @@ jobs:
           --exclude='*.pyc' \
           --exclude='*.log'
         
-        # Create the zip file with mod files in root
-        cd temp
-        zip -r "../${PACKAGE_NAME}.zip" .
-        cd ..
+        # Create the Factorio direct install zip file
+        cd temp/factorio
+        zip -r "../../${FACTORIO_PACKAGE_NAME}.zip" "$FACTORIO_PACKAGE_NAME/"
+        cd ../..
         
-        # Clean up temp directory
-        rm -rf temp
-        
-        echo "Created package: ${PACKAGE_NAME}.zip"
-        ls -la "${PACKAGE_NAME}.zip"
+        echo "Created Factorio package: ${FACTORIO_PACKAGE_NAME}.zip"
+        ls -la "${FACTORIO_PACKAGE_NAME}.zip"
     
-    - name: Create Release with GitHub CLI
+    - name: Create Mod Portal Package
       if: steps.check_tag.outputs.exists == 'false'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         MOD_NAME="${{ steps.get_mod_name.outputs.mod_name }}"
         VERSION="${{ steps.get_version.outputs.version }}"
-        PACKAGE_NAME="${MOD_NAME}_${VERSION}"
+        PORTAL_PACKAGE_NAME="${MOD_NAME}_${VERSION}_mod-portal"
         
-        # Create release with GitHub CLI
-        gh release create "v${VERSION}" \
-          --title "Instant Mining v${VERSION}" \
-          --notes "## Instant Mining v${VERSION}
-
-        Factorio mod release for version ${VERSION}.
-
-        ### Installation
-
-        **Direct Installation:**
-        1. Download the zip file below
-        2. Place the zip file directly in your Factorio mods folder (\`%appdata%/Factorio/mods\` on Windows, \`~/.factorio/mods\` on Linux)
-        3. Do NOT extract the zip file - Factorio will handle it automatically
-        4. Restart Factorio
-
-        **Mod Portal:**
-        This same zip file can be uploaded directly to the [Factorio Mod Portal](https://mods.factorio.com/) without any modifications.
-
-        ### Package Format
-        This package contains mod files in the root of the zip (no subfolder), which is the correct format for both direct Factorio installation and mod portal upload.
-
-        ### Changes
-        See the changelog in the mod files for detailed changes in this version." \
-          "${PACKAGE_NAME}.zip"
+        # Create a temporary directory for the mod portal package
+        mkdir -p "temp/portal"
+        
+        # Copy all files directly to the portal temp directory (no subfolder for mod portal)
+        rsync -av --progress . "temp/portal/" \
+          --exclude='.git/' \
+          --exclude='.github/' \
+          --exclude='.vscode/' \
+          --exclude='.idea/' \
+          --exclude='*.code-workspace' \
+          --exclude='node_modules/' \
+          --exclude='.gitignore' \
+          --exclude='.gitattributes' \
+          --exclude='README.md' \
+          --exclude='LICENSE' \
+          --exclude='*.md' \
+          --exclude='.env' \
+          --exclude='.env.*' \
+          --exclude='Thumbs.db' \
+          --exclude='.DS_Store' \
+          --exclude='*.tmp' \
+          --exclude='*.temp' \
+          --exclude='temp/' \
+          --exclude='build/' \
+          --exclude='dist/' \
+          --exclude='.pytest_cache/' \
+          --exclude='__pycache__/' \
+          --exclude='*.pyc' \
+          --exclude='*.log'
+        
+        # Create the mod portal zip file (files in root of zip, not in a subfolder)
+        cd temp/portal
+        zip -r "../../${PORTAL_PACKAGE_NAME}.zip" .
+        cd ../..
+        
+        echo "Created Mod Portal package: ${PORTAL_PACKAGE_NAME}.zip"
+        ls -la "${PORTAL_PACKAGE_NAME}.zip"
+    
+    - name: Clean up temp directories
+      if: steps.check_tag.outputs.exists == 'false'
+      run: |
+        rm -rf temp
+    
+    - name: Create Release
+      if: steps.check_tag.outputs.exists == 'false'
+      uses: actions/create-release@v1
+      id: create_release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.get_version.outputs.version }}
+        release_name: "Instant Mining v${{ steps.get_version.outputs.version }}"
+        body: |
+          ## Instant Mining v${{ steps.get_version.outputs.version }}
+          
+          Factorio mod release for version ${{ steps.get_version.outputs.version }}.
+          
+          ### Installation Options
+          
+          **Option 1: Direct Factorio Installation**
+          1. Download `${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}.zip`
+          2. Extract it to your Factorio mods folder (`%appdata%/Factorio/mods` on Windows)
+          3. Restart Factorio
+          
+          **Option 2: Mod Portal Upload**
+          1. Download `${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}_mod-portal.zip`
+          2. Upload this file to the [Factorio Mod Portal](https://mods.factorio.com/)
+          
+          ### Package Differences
+          - **Direct Install**: Contains mod files in a properly named folder structure
+          - **Mod Portal**: Contains mod files in root of zip (required for mod portal upload)
+          
+          ### Changes
+          See the changelog in the mod files for detailed changes in this version.
+        draft: false
+        prerelease: false
+    
+    - name: Upload Factorio Direct Install Asset
+      if: steps.check_tag.outputs.exists == 'false'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}.zip
+        asset_name: ${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}.zip
+        asset_content_type: application/zip
+    
+    - name: Upload Mod Portal Asset
+      if: steps.check_tag.outputs.exists == 'false'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}_mod-portal.zip
+        asset_name: ${{ steps.get_mod_name.outputs.mod_name }}_${{ steps.get_version.outputs.version }}_mod-portal.zip
+        asset_content_type: application/zip
     
     - name: Skip release (tag exists)
       if: steps.check_tag.outputs.exists == 'true'
